@@ -1,0 +1,242 @@
+---
+description: api
+globs: 
+alwaysApply: false
+---
+# REGRAS E BOAS PRÁTICAS PARA PROJETO NEXT.JS 13 (APP ROUTER)
+
+## 1. ESTRUTURA DE DIRETÓRIOS
+
+**Objetivo:**  
+Manter a organização do projeto Next.js 13 de forma clara e padronizada, usando o **App Router** (novo roteamento) com a pasta `app/` e arquivos `route.ts` para as rotas de API.
+
+**Regra:**  
+1. Todo código do projeto (rotas, componentes, utilitários, estilos) deve ficar em uma pasta chamada `src`.
+2. Dentro da pasta `src`, deve existir uma subpasta chamada `app/`.
+3. A rota de API (`app/api`) deve conter subpastas para cada recurso (por exemplo, `users`, `products`, `appointments`, etc.).
+4. Cada recurso terá um arquivo `route.ts` para tratar os métodos HTTP ou, se necessário, subpastas adicionais (por exemplo, `[id]/route.ts` para rotas dinâmicas).
+
+### Exemplo de Estrutura
+
+```plaintext
+src/
+ ├─ app/
+ │   ├─ layout.tsx         // Layout global da aplicação
+ │   ├─ page.tsx           // Página inicial (se houver)
+ │   ├─ api/
+ │   │   ├─ users/
+ │   │   │    └─ route.ts  // Rota para listar/criar usuários (GET, POST)
+ │   │   ├─ users/
+ │   │   │    └─ [id]/route.ts  // Rota para usuário específico (GET, PUT, DELETE)
+ │   │   ├─ products/
+ │   │   │    └─ route.ts       // Rota para produtos
+ │   │   ├─ appointments/
+ │   │   │    └─ route.ts
+ │   │   └─ ... (outros recursos) 
+ │   └─ ... (outras pastas/rotas da aplicação)
+ ├─ components/
+ │   ├─ Header.tsx
+ │   ├─ Footer.tsx
+ │   └─ ...
+ ├─ lib/
+ │   ├─ supabase/
+ │   │    ├─ admin.ts   // Supabase client com service_role_key
+ │   │    └─ client.ts  // Supabase client com anon_key
+ │   └─ utils/
+ │        ├─ auth.ts          // Funções de autenticação/autorizações
+ │        └─ error-handler.ts // Funções para tratamento de erros
+ ├─ styles/
+ │   └─ globals.css
+ └─ ... (arquivos de config, como next.config.js, tsconfig.json, etc.)
+2. USO DE TYPESCRIPT
+Objetivo:
+Garantir segurança de tipos e melhor clareza no desenvolvimento.
+
+Regra:
+
+Todos os arquivos de rotas e componentes devem ser .ts ou .tsx.
+
+Deve existir um arquivo tsconfig.json configurado para suporte a React e Next.js.
+
+3. VARIÁVEIS DE AMBIENTE E CHAVES SUPABASE
+Objetivo:
+Proteger as chaves de API e manter a separação entre a chave pública (anon key) e a chave secreta (service role key).
+
+Regra:
+
+Chave Pública (anon key)
+
+Nome da variável: NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+Armazenada em .env.local
+
+Usada no arquivo lib/supabase/client.ts para operações de leitura e escritas seguras (limitadas pelas Policies de RLS).
+
+Chave Secreta (service role key)
+
+Nome da variável: SUPABASE_SERVICE_ROLE_KEY
+
+Armazenada em .env.local ou nas variáveis de ambiente do servidor (NUNCA com prefixo NEXT_PUBLIC_)
+
+Usada somente no lado do servidor, por exemplo em lib/supabase/admin.ts.
+
+Exemplo de .env.local (NÃO comitar esse arquivo):
+
+dotenv
+Copiar
+NEXT_PUBLIC_SUPABASE_URL=https://url-do-seu-projeto.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=chave_anon
+
+SUPABASE_SERVICE_ROLE_KEY=chave_service_role
+4. ROTAS DE API COM APP ROUTER
+Objetivo:
+Criar rotas de forma padronizada usando route.ts e métodos HTTP (GET, POST, PUT, DELETE, etc.).
+
+Regra:
+
+Cada subpasta dentro de app/api/ representa um recurso (ex.: users, products, appointments).
+
+O arquivo route.ts exporta funções correspondentes aos métodos suportados. Exemplos:
+
+ts
+Copiar
+// Exemplo: src/app/api/users/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(req: NextRequest) {
+  // Lógica para listar todos os usuários
+  return NextResponse.json({ message: 'Lista de usuários' });
+}
+
+export async function POST(req: NextRequest) {
+  // Lógica para criar um novo usuário
+  return NextResponse.json({ message: 'Usuário criado' });
+}
+ts
+Copiar
+// Exemplo: src/app/api/users/[id]/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(req: NextRequest, { params }: any) {
+  const { id } = params;
+  // Lógica para buscar dados de um usuário específico
+  return NextResponse.json({ userId: id });
+}
+
+export async function PUT(req: NextRequest, { params }: any) {
+  const { id } = params;
+  // Lógica para atualizar um usuário
+  return NextResponse.json({ message: `Usuário ${id} atualizado` });
+}
+
+export async function DELETE(req: NextRequest, { params }: any) {
+  const { id } = params;
+  // Lógica para deletar um usuário
+  return NextResponse.json({ message: `Usuário ${id} deletado` });
+}
+5. SEGURANÇA E AUTENTICAÇÃO
+Objetivo:
+Restringir acesso a rotas sensíveis e proteger dados com políticas de RLS do Supabase.
+
+Regra:
+
+RLS no Supabase
+
+As policies (Row Level Security) definidas no Supabase devem impedir acessos não autorizados.
+
+Operações sensíveis só podem ser executadas pela service role key, que roda no servidor.
+
+Middleware de Autenticação (opcional)
+
+Pode-se criar um src/middleware.ts para rodar antes de certas rotas.
+
+Exemplo de matcher: matcher: ['/api/:path*'] para aplicar a todas as rotas de API.
+
+Dentro do middleware, verifique tokens ou sessões para autorizar o acesso.
+
+Autenticação no Backend
+
+Em cada método de route.ts, use as funções de auth.ts (em lib/utils) para garantir que apenas usuários autorizados possam alterar determinados recursos.
+
+6. BOAS PRÁTICAS DE CÓDIGO
+Tratamento de Erros
+
+Centralizar a lógica de erros em error-handler.ts ou lidar com erros retornando NextResponse.json com status HTTP adequado.
+
+Comentários Claros
+
+Cada método (GET, POST, etc.) deve ter comentários explicando a finalidade, parâmetros de entrada e formato de resposta.
+
+Conversão de Dados
+
+Ao receber dados (por ex. JSON), parse-os e valide-os antes de inserir no banco.
+
+Uso de Hooks do Next.js
+
+Se necessário, utilize os hooks adequados para pré-carregamento de dados ou cache (ex.: useServerSideProps no modelo antigo ou Server Components no App Router), mas mantenha a lógica de segurança no servidor.
+
+7. EXEMPLO DE USO DO SUPABASE CLIENT
+admin.ts (service role key)
+ts
+Copiar
+// src/lib/supabase/admin.ts
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+);
+
+export default supabaseAdmin;
+client.ts (anon key)
+ts
+Copiar
+// src/lib/supabase/client.ts
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+);
+
+export default supabase;
+8. EXEMPLO DE AUTENTICAÇÃO E AUTORIZAÇÃO BÁSICA
+ts
+Copiar
+// src/lib/utils/auth.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+// Exemplo simples de função que valida um token
+export function checkAuth(req: NextRequest) {
+  const token = req.headers.get('authorization');
+  if (!token) {
+    return false; // ou lançar erro
+  }
+  // Validar token de forma customizada (JWT, etc.)
+  return true;
+}
+Uso em route.ts:
+
+ts
+Copiar
+import { NextRequest, NextResponse } from 'next/server';
+import { checkAuth } from '@/lib/utils/auth';
+
+export async function POST(req: NextRequest) {
+  if (!checkAuth(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  // Lógica de criação...
+}
+9. RESUMO GERAL
+Armazene as chaves em variáveis de ambiente (.env.local).
+
+Separe o cliente do Supabase em admin.ts (service role key, apenas no servidor) e client.ts (anon key, para o cliente).
+
+Use o App Router do Next.js 13, criando arquivos route.ts em cada diretório de recurso dentro de src/app/api.
+
+Proteja dados sensíveis com RLS no Supabase e, opcionalmente, um middleware para verificação de tokens.
+
+Documente cada endpoint com comentários, explicando métodos, parâmetros e formato de resposta.
+
+Todas as implementações devem respeitar estas regras de forma explícita e consistente em todos os arquivos.
